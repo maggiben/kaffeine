@@ -1,0 +1,31 @@
+{
+  "kafka": {
+    "client": {
+      "connectionString": "localhost:2181"
+    },
+    "consumer": {
+      "autoCommit": false,
+      "fetchMaxWaitMs": 1000,
+      "fetchMaxBytes": 1048576
+    },
+    "producer": {
+
+    },
+    "topic": {
+      "topicName": "screen-broadcast"
+    }
+  },
+  "redis": {
+      "hostname": "localhost",
+      "port": 6379,
+      "credentials": {
+        "usermane": "",
+        "password": ""
+      },
+      "subscriberName": "screen-broadcast"
+  },
+  "service": {
+    "port": 8080,
+    "host": "localhost"
+  }
+}

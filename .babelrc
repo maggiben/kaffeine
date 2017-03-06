@@ -1,0 +1,19 @@
+{
+  "presets": [
+    ["env", {
+      "targets": {
+        "node": "current"
+      }
+    }],
+    "react",
+    "stage-0"
+  ],
+  "sourceMaps": true,
+  "comments": false,
+  "compact": false,
+  "plugins": [
+    "transform-decorators-legacy",
+    "transform-async-to-generator",
+    "transform-class-properties"
+  ]
+}
