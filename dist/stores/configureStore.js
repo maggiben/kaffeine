@@ -48,11 +48,7 @@ function actionListenersStoreEnhancer(createStore) {
 
 const enhancer = (0, _redux.compose)((0, _redux.applyMiddleware)(_reduxThunk2.default), actionListenersStoreEnhancer, (0, _redux.applyMiddleware)(function ({ dispatch, getState }) {
   return next => action => {
-    console.log('will dispatch', action);
-
     let returnValue = next(action);
-
-    console.log('state after dispatch', getState());
 
     return returnValue;
   };

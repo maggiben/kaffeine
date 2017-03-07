@@ -15,7 +15,7 @@ export default class KafkaConsumer {
 
   // Feed the data consumer
   onMessage = message => {
-    debug(message);
+    debug(message.value);
   }
 
   onError = error => {
@@ -25,7 +25,7 @@ export default class KafkaConsumer {
   // If consumer get `offsetOutOfRange` event, fetch data from the smallest(oldest) offset
   onOffsetOutOfRange = topic => {
     topic.maxNum = 2;
-    offset.fetch([topic], function (error, offsets) {
+    this.offset.fetch([topic], function (error, offsets) {
       if (error) {
         return debug('error', error)
       }

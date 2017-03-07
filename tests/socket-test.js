@@ -10,7 +10,7 @@ const request = supertest(server)
 
 // mancora
 
-describe('Socket Connection', function() {
+describe('Test socket connection', function() {
   it('it should GET', (done) => {
     request
       .get('/api')
@@ -99,11 +99,11 @@ describe('Socket Connection', function() {
         'token': chance.hash()
       }
     }
-    const client = io.connect(`http://${config.service.host}:${config.service.port}/screen`, options);
+    const client = io.connect(`http://${config.service.host}:${config.service.port}/screen`, options)
     client.once('connect', function () {
       // Listen echoed messages
       client.once('banner', function (data) {
-        console.log('banner: ', data)
+        //console.log('banner: ', JSON.stringify(data,0,2))
         expect(data).to.be.a('object')
         expect(data).to.include.keys('message')
         return done()
@@ -114,41 +114,4 @@ describe('Socket Connection', function() {
       client.emit('banner', 'hola mundo')
     })
   })
-  /*it('join a room', function (done) {
-    const options = {
-      transports: ['websocket'],
-      'force new connection': true,
-      'query': {
-        'token': chance.hash()
-      }
-    }
-    const client = io.connect(`http://${config.service.host}:${config.service.port}`, options);
-    client.once('connect', function () {
-      // Listen echoed messages
-      client.on('echo', function (message) {
-        console.log('--------------')
-        console.log('-------------- echo:' + message)
-        console.log('--------------')
-        //expect(message).to.be.a('string')
-        //expect(message).to.equal('Hello World')
-        //client.disconnect()
-      })
-      // Disconnect event
-      client.once('disconnect', function (reason) {
-        expect(reason).to.be.a('string')
-        expect(reason).to.equal('io client disconnect')
-        return done()
-      })
-      client.once('fail', function (reason) {
-        console.log('fail: ', reason)
-      })
-      // Send echo message
-      client.emit('join', {
-        name: 'notification'
-      })
-      client.emit('wall', 'hola mundo')
-
-    })
-  })
-  */
 })

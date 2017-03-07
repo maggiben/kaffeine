@@ -18,7 +18,7 @@ const debug = require('debug')('kaffeine:consumer');
 let KafkaConsumer = class KafkaConsumer {
   constructor(store) {
     this.onMessage = message => {
-      debug(message);
+      debug(message.value);
     };
 
     this.onError = error => {
@@ -27,7 +27,7 @@ let KafkaConsumer = class KafkaConsumer {
 
     this.onOffsetOutOfRange = topic => {
       topic.maxNum = 2;
-      offset.fetch([topic], function (error, offsets) {
+      this.offset.fetch([topic], function (error, offsets) {
         if (error) {
           return debug('error', error);
         }

@@ -44,7 +44,7 @@
   "scripts": {
     "webpack-dev": "NODE_ENV=development webpack -p",
     "dev": "babel-node ./app/app.js",
-    "start": "npm run transpile-app && node ./dist/app.js",
+    "start": "npm run transpile-app && DEBUG=kaffeine:*  node ./dist/app.js",
     "testbm": "rm -fr ./dist/ && npm run transpile-app && npm run transpile-test && DEBUG=kaffeine:* mocha --compilers js:babel-core/register --timeout 15000 --check-leaks --reporter spec --bail dist/*-test.js",
     "transpile-app": "babel --out-dir dist app",
     "transpile-test": "babel --out-dir dist tests"

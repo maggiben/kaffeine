@@ -5,8 +5,10 @@ import config from 'config'
 import { Socket, ScreenSocket } from './socket'
 import { api } from './routes'
 import KafkaConsumer from './consumer'
+import KafkaConsumerGroup from './ConsumerGroup'
 import RedisPubSub from './pubsub'
 import configureStore from './stores/configureStore'
+const debug = require('debug')('kaffeine:main')
 
 // CORS middleware
 const allowCrossDomain = function (request, response, next) {
@@ -30,6 +32,10 @@ const reduxMiddleware = function (request, response, next) {
   return next()
 }
 
+const removeActionListener = store.addActionListener('ADD_SCREEN', () => {
+  //console.log('track', 'ADD_SCREEN');
+});
+
 // Globals
 const app = express()
 
@@ -47,11 +53,27 @@ app.use('/api', api);
 export const server = app.listen(config.service.port, function () {
   const host = server.address().address
   const port = server.address().port
-  console.log(`Runner app listening at ${host}:${port}'`)
+  debug(`Runner app listening at ${host}:${port}'`)
 })
 
 const socket = new ScreenSocket(server, store, '/screen')
-const kafkaConsumer = new KafkaConsumer(store)
-const redisPubSub = new RedisPubSub(store);
+//const kafkaConsumer = new KafkaConsumer(store)
+const kafkaConsumerGroup = new KafkaConsumerGroup(store)
+const redisPubSub = new RedisPubSub(store)
 
+// Gracefully Shuts down
+/*
+process.on('SIGTERM', function () {
+  console.log('SIGTERM')
+  server.close(function () {
+    process.exit(0)
+  })
+})
+process.on('SIGINT', function() {
+  console.log('SIGINT')
+  server.close(function () {
+    process.exit(0)
+  })
+})
+*/
 export default app

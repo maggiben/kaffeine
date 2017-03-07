@@ -6,7 +6,6 @@ const chance = new Chance()
 const router = express.Router()
 
 router.get('/', function(request, response) {
-  console.log(response.store.getState())
   const { store } = response
   store.dispatch({
     type: 'ADD_SCREEN',

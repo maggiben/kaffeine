@@ -6,7 +6,7 @@ import adapter from 'socket.io-redis'
 import config from 'config'
 import { EventEmitter } from 'events'
 import uuid from 'uuid/v4'
-const debug = require('debug')('kaffeine:consumer')
+const debug = require('debug')('kaffeine:socketio')
 
 // Default rooms
 const rooms = [{
@@ -38,6 +38,8 @@ class SocketClient {
     this.io = io
     this.socket = socket
     this.db = pub
+
+
     this.socket.on('disconnect', this.disconnect)
     this.socket.on('echo', this.echo)
     this.socket.on('join', this.join)
@@ -46,10 +48,11 @@ class SocketClient {
   }
 
   disconnect = () => {
-    console.log('disconnect:', this.socket.id)
+    debug('disconnect:', this.socket.id)
   }
 
   echo = message => {
+    debug('echo: ', message)
     this.socket.emit('echo', message)
     /*this.db.get('chatio:connections:' + this.socket.user.token, function (error, reply) {
       console.log("REDIS: ", reply)
@@ -64,9 +67,10 @@ class SocketClient {
       this.socket.emit('fail', 'not found')
     }
     this.io.adapter.remoteJoin(this.socket.id, 'notification', function (error) {
-      if (error) { /* unknown id */ }
-      // success
-      console.log('joined !!!')
+      if (error) {
+        debug('unknown id')
+        /* unknown id */
+      }
     });
     this.io.to('notification').emit('echo', { message: 'welcome' })
   }
@@ -81,7 +85,7 @@ class SocketClient {
       })
     })
     */
-    console.log(this.socket.store.getState())
+    //console.log(this.socket.store.getState())
     this.io.to('notification').emit('banner', { room, message })
   }
   getId = token => {
@@ -115,7 +119,7 @@ export class Socket {
 
     this.io.on('connection', this.addClient)
     this.io.on('disconnecting', reason => {
-      console.log('disconnecting: ', reason)
+      debug('disconnecting: ', reason)
     })
     this.io.use(this.handshake)
     this.io.use(this.redux)
@@ -141,6 +145,7 @@ export class Socket {
       this.store.dispatch(this.add(token))
       return next()
     } else {
+      debug('unauthorized')
       socket.disconnect('unauthorized')
       return next(new Error('not authorized'))
     }
@@ -172,6 +177,7 @@ export class Socket {
       socket.store = this.store
       return next()
     } else {
+      debug('no store associated with socket')
       return next(new Error('no store associated with socket'))
     }
   }
@@ -188,17 +194,20 @@ class GenericSocket {
       subClient: sub
     }))
 
-    debug('namespace: ', namespace)
+    debug('socket namespace: ', namespace)
     this.io = io.of(namespace)
     this.store = store
     // middlewares
     this.io.use(this.handshake)
     this.io.use(this.redux)
+    // listeners
+    this.io.on('disconnecting', this.disconnecting)
   }
 
   getClients () {
     this.adapter.clients(function (error, clients) {
-      console.log('clientsx:', clients) // an array containing all connected socket ids
+      // an array containing all connected socket ids
+      return clients;
     })
   }
 
@@ -223,18 +232,22 @@ class GenericSocket {
       return next(new Error('no store associated with socket'))
     }
   }
+
+  disconnecting = reason => {
+    debug('disconnecting: ', reason)
+  }
 }
 
 export class ScreenSocket extends GenericSocket {
   constructor(...args) {
     super(...args)
+    [this.server, this.store, this.namespace] = args;
     this.io.on('connection', this.addClient)
     /*
     const removeActionListener = store.addActionListener('ADD_SCREEN', () => {
       console.log('track', 'ADD_SCREEN');
     })
     */
-    console.log('ARGS:\n', args[1])
   }
   addClient = socket => {
     let client = new SocketClient(this.io, socket)

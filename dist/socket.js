@@ -27,7 +27,7 @@ var _v2 = _interopRequireDefault(_v);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-const debug = require('debug')('kaffeine:consumer');
+const debug = require('debug')('kaffeine:socketio');
 
 const rooms = [{
   name: 'notification',
@@ -52,10 +52,11 @@ let SocketEvents = class SocketEvents extends _events.EventEmitter {
 let SocketClient = class SocketClient {
   constructor(io, socket) {
     this.disconnect = () => {
-      console.log('disconnect:', this.socket.id);
+      debug('disconnect:', this.socket.id);
     };
 
     this.echo = message => {
+      debug('echo: ', message);
       this.socket.emit('echo', message);
     };
 
@@ -66,9 +67,9 @@ let SocketClient = class SocketClient {
         this.socket.emit('fail', 'not found');
       }
       this.io.adapter.remoteJoin(this.socket.id, 'notification', function (error) {
-        if (error) {}
-
-        console.log('joined !!!');
+        if (error) {
+          debug('unknown id');
+        }
       });
       this.io.to('notification').emit('echo', { message: 'welcome' });
     };
@@ -76,7 +77,6 @@ let SocketClient = class SocketClient {
     this.banner = message => {
       let room = rooms[0];
 
-      console.log(this.socket.store.getState());
       this.io.to('notification').emit('banner', { room, message });
     };
 
@@ -89,6 +89,7 @@ let SocketClient = class SocketClient {
     this.io = io;
     this.socket = socket;
     this.db = pub;
+
     this.socket.on('disconnect', this.disconnect);
     this.socket.on('echo', this.echo);
     this.socket.on('join', this.join);
@@ -114,6 +115,7 @@ let Socket = exports.Socket = class Socket {
         this.store.dispatch(this.add(token));
         return next();
       } else {
+        debug('unauthorized');
         socket.disconnect('unauthorized');
         return next(new Error('not authorized'));
       }
@@ -144,6 +146,7 @@ let Socket = exports.Socket = class Socket {
         socket.store = this.store;
         return next();
       } else {
+        debug('no store associated with socket');
         return next(new Error('no store associated with socket'));
       }
     };
@@ -160,7 +163,7 @@ let Socket = exports.Socket = class Socket {
 
     this.io.on('connection', this.addClient);
     this.io.on('disconnecting', reason => {
-      console.log('disconnecting: ', reason);
+      debug('disconnecting: ', reason);
     });
     this.io.use(this.handshake);
     this.io.use(this.redux);
@@ -198,39 +201,42 @@ let GenericSocket = class GenericSocket {
       }
     };
 
+    this.disconnecting = reason => {
+      debug('disconnecting: ', reason);
+    };
+
     const io = _socket2.default.listen(server);
     io.adapter((0, _socket4.default)({
       pubClient: pub,
       subClient: sub
     }));
 
-    debug('namespace: ', namespace);
+    debug('socket namespace: ', namespace);
     this.io = io.of(namespace);
     this.store = store;
 
     this.io.use(this.handshake);
     this.io.use(this.redux);
+
+    this.io.on('disconnecting', this.disconnecting);
   }
 
   getClients() {
     this.adapter.clients(function (error, clients) {
-      console.log('clientsx:', clients);
+      return clients;
     });
   }
 
 };
 let ScreenSocket = exports.ScreenSocket = class ScreenSocket extends GenericSocket {
   constructor(...args) {
-    super(...args);
+    var _temp;
 
-    this.addClient = socket => {
+    (_temp = super(...args), this.addClient = socket => {
       let client = new SocketClient(this.io, socket);
       return client;
-    };
-
+    }, _temp)[(this.server, this.store, this.namespace)] = args;
     this.io.on('connection', this.addClient);
-
-    console.log('ARGS:\n', args);
   }
 };
 let RemoteSocket = exports.RemoteSocket = class RemoteSocket extends GenericSocket {

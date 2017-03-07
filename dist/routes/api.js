@@ -22,7 +22,6 @@ const chance = new _chance2.default();
 const router = _express2.default.Router();
 
 router.get('/', function (request, response) {
-  console.log(response.store.getState());
   const { store } = response;
   store.dispatch({
     type: 'ADD_SCREEN',
