@@ -10,31 +10,31 @@ const reducer = combineReducers({
 
 function actionListenersStoreEnhancer(createStore) {
   return (reducer, initialState, enhancer) => {
-    const actionListeners = {};
-    const store = createStore(reducer, initialState, enhancer);
-    const dispatch = store.dispatch;
-    store.dispatch = (action) => {
-      const result = dispatch(action);
+    const actionListeners = {}
+    const store = createStore(reducer, initialState, enhancer)
+    const dispatch = store.dispatch
+    store.dispatch = action => {
+      const result = dispatch(action)
       if (typeof action === 'object' && action.type && actionListeners[action.type]) {
-        actionListeners[action.type].forEach((listener) => listener(action));
+        actionListeners[action.type].forEach((listener) => listener(action))
       }
-      return result;
+      return result
     };
     store.addActionListener = (actionType, listener) => {
-      actionListeners[actionType] = (actionListeners[actionType] || []).concat(listener);
+      actionListeners[actionType] = (actionListeners[actionType] || []).concat(listener)
       return () => {
-        actionListeners[actionType] = actionListeners[actionType].filter((l) => l !== listener);
+        actionListeners[actionType] = actionListeners[actionType].filter((l) => l !== listener)
       };
     };
-    return store;
-  };
+    return store
+  }
 }
 
 const enhancer = compose(
   applyMiddleware(thunk),
   actionListenersStoreEnhancer,
   applyMiddleware(function ({ dispatch, getState }) {
-    return (next) => (action) => {
+    return (next) => action => {
       //console.log('will dispatch', action)
       // Call the next dispatch method in the middleware chain.
       let returnValue = next(action)

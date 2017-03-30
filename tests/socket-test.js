@@ -1,11 +1,19 @@
-import server from '../app/app'
+//import server from '../app/app'
 import { expect } from 'chai'
 import supertest from 'supertest'
 import io from 'socket.io-client'
 import config from 'config'
 import Chance from 'chance'
+import proxyquire from 'proxyquire'
 
 const chance = new Chance()
+
+// Proxy this dependency
+proxyquire.noCallThru();
+const app = proxyquire('../app/app', {
+});
+const store = app.store
+const server = app.server
 const request = supertest(server)
 
 // mancora
@@ -19,7 +27,7 @@ describe('Test socket connection', function() {
       .end(function(error, response) {
         if (error) throw error;
         expect(response.body).to.be.a('object')
-        expect(response.body).to.include.keys('date')
+        expect(response.body).to.include.keys('Screens')
         return done()
       })
   })
@@ -91,27 +99,21 @@ describe('Test socket connection', function() {
     })
   })
 
-  it('join a wall', function (done) {
-    const options = {
-      transports: ['websocket'],
-      'force new connection': true,
-      'query': {
-        'token': chance.hash()
+  it('joins a clinet and gets his payload', function (done) {
+    const getOptions = function () {
+      return {
+        transports: ['websocket'],
+        'query': {
+          'token': chance.hash()
+        }
       }
     }
-    const client = io.connect(`http://${config.service.host}:${config.service.port}/screen`, options)
+
+    const client = io.connect(`http://${config.service.host}:${config.service.port}/screen`, getOptions())
+
+    // Handle connection
     client.once('connect', function () {
-      // Listen echoed messages
-      client.once('banner', function (data) {
-        //console.log('banner: ', JSON.stringify(data,0,2))
-        expect(data).to.be.a('object')
-        expect(data).to.include.keys('message')
-        return done()
-      })
-      client.emit('join', {
-        name: 'notification'
-      })
-      client.emit('banner', 'hola mundo')
-    })
+
+    });
   })
 })

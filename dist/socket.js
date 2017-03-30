@@ -3,11 +3,13 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.RemoteSocket = exports.ScreenSocket = exports.Socket = undefined;
+exports.RemoteSocket = exports.ScreenSocket = undefined;
 
 var _socket = require('socket.io');
 
 var _socket2 = _interopRequireDefault(_socket);
+
+var _package = require('../package.json');
 
 var _redis = require('redis');
 
@@ -15,15 +17,11 @@ var _socket3 = require('socket.io-redis');
 
 var _socket4 = _interopRequireDefault(_socket3);
 
+var _events = require('events');
+
 var _config = require('config');
 
 var _config2 = _interopRequireDefault(_config);
-
-var _events = require('events');
-
-var _v = require('uuid/v4');
-
-var _v2 = _interopRequireDefault(_v);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -50,129 +48,74 @@ let SocketEvents = class SocketEvents extends _events.EventEmitter {
   }
 };
 let SocketClient = class SocketClient {
-  constructor(io, socket) {
-    this.disconnect = () => {
+  constructor(io, socket, store) {
+    this.disconnect = reason => {
       debug('disconnect:', this.socket.id);
+      this.socket.removeAllListeners();
+      this.removeActionListeners.map(removeActionListener => {
+        removeActionListener();
+      });
     };
 
     this.echo = message => {
-      debug('echo: ', message);
+      debug('echo:', message);
       this.socket.emit('echo', message);
     };
 
-    this.join = options => {
-      let exists = rooms.some(room => room.name === options.name);
+    this.ping = () => {
+      debug('ping');
+      this.socket.emit('pong', _package.version);
+    };
 
+    this.join = options => {
+      debug('ping');
+      let exists = rooms.some(room => room.name === options.name);
       if (!exists) {
         this.socket.emit('fail', 'not found');
       }
-      this.io.adapter.remoteJoin(this.socket.id, 'notification', function (error) {
+
+      this.io.adapter.remoteJoin(this.socket.id, options.name, error => {
         if (error) {
           debug('unknown id');
+          return;
         }
-      });
-      this.io.to('notification').emit('echo', { message: 'welcome' });
-    };
-
-    this.banner = message => {
-      let room = rooms[0];
-
-      this.io.to('notification').emit('banner', { room, message });
-    };
-
-    this.getId = token => {
-      return this.socket.emit('screen', {
-        id: (0, _v2.default)()
+        this.socket.emit('joined', options.name);
       });
     };
 
+    this.leave = options => {
+      debug('leave');
+      let exists = rooms.some(room => room.name === options.name);
+      if (!exists) {
+        this.socket.emit('fail', 'not found');
+      }
+
+      this.io.adapter.remoteLeave(this.socket.id, options.name, error => {
+        if (error) {
+          debug('unknown id');
+          return;
+        }
+        this.socket.emit('leaved', options.name);
+      });
+    };
+
+    this.actions = ['MESSAGE', 'DISPLAY', 'SEND', 'REFRESH', 'RELOAD'];
+    this.events = ['disconnect', 'echo', 'ping', 'join', 'leave'];
     this.io = io;
     this.socket = socket;
-    this.db = pub;
-
-    this.socket.on('disconnect', this.disconnect);
-    this.socket.on('echo', this.echo);
-    this.socket.on('join', this.join);
-    this.socket.on('banner', this.banner);
-    this.db.set('chatio:connections:' + socket.user.token, socket.id);
-  }
-
-};
-let Socket = exports.Socket = class Socket {
-
-  constructor(server, store, namespace = '/') {
-    this.addClient = socket => {
-      let client = new SocketClient(this.io, socket);
-      return client;
-    };
-
-    this.handshake = (socket, next) => {
-      const token = socket.handshake.query.token;
-      if (token) {
-        socket.user = {
-          token: token
-        };
-        this.store.dispatch(this.add(token));
-        return next();
-      } else {
-        debug('unauthorized');
-        socket.disconnect('unauthorized');
-        return next(new Error('not authorized'));
-      }
-    };
-
-    this.add = token => {
-      return function (dispatch, getState) {
-        return dispatch(function () {
-          return new Promise((resolve, reject) => {
-            setTimeout(() => {
-              return resolve();
-            }, 50);
-          });
-        }).then(() => {
-          dispatch({
-            type: 'ADD_SCREEN',
-            payload: {
-              id: token,
-              title: 'nppx'
-            }
-          });
-        });
-      };
-    };
-
-    this.redux = (socket, next) => {
-      if (this.store) {
-        socket.store = this.store;
-        return next();
-      } else {
-        debug('no store associated with socket');
-        return next(new Error('no store associated with socket'));
-      }
-    };
-
-    const io = _socket2.default.listen(server);
-    io.adapter((0, _socket4.default)({
-      pubClient: pub,
-      subClient: sub
-    }));
-
     this.store = store;
-    this.io = io.of(namespace);
-    this.events = new SocketEvents();
 
-    this.io.on('connection', this.addClient);
-    this.io.on('disconnecting', reason => {
-      debug('disconnecting: ', reason);
+    this.events.map(event => {
+      return this.socket.on(event, this[event]);
     });
-    this.io.use(this.handshake);
-    this.io.use(this.redux);
-  }
 
-  getClients() {
-    this.adapter.clients(function (error, clients) {
-      console.log('clientsx:', clients);
-    });
+    this.removeActionListeners = this.actions.map(action => this.store.addActionListener(action, action => {
+      let { query } = action.payload;
+      if (query && query.id === this.socket.user.id) {
+        debug('store action', action.type);
+        this.socket.emit(action.type, action.payload);
+      }
+    }));
   }
 
 };
@@ -181,9 +124,11 @@ let GenericSocket = class GenericSocket {
   constructor(server, store, namespace = '/') {
     this.handshake = (socket, next) => {
       const token = socket.handshake.query.token;
+      const id = socket.handshake.query.id;
       if (token) {
         socket.user = {
-          token: token
+          token: token,
+          id: id
         };
         return next();
       } else {
@@ -199,10 +144,6 @@ let GenericSocket = class GenericSocket {
       } else {
         return next(new Error('no store associated with socket'));
       }
-    };
-
-    this.disconnecting = reason => {
-      debug('disconnecting: ', reason);
     };
 
     const io = _socket2.default.listen(server);
@@ -213,17 +154,22 @@ let GenericSocket = class GenericSocket {
 
     debug('socket namespace: ', namespace);
     this.io = io.of(namespace);
+
     this.store = store;
 
     this.io.use(this.handshake);
     this.io.use(this.redux);
-
-    this.io.on('disconnecting', this.disconnecting);
   }
 
   getClients() {
-    this.adapter.clients(function (error, clients) {
-      return clients;
+    return new Promise((resolve, reject) => {
+      this.adapter.clients(function (error, clients) {
+        if (error) {
+          return reject(error);
+        }
+
+        return resolve(clients);
+      });
     });
   }
 
@@ -232,12 +178,20 @@ let ScreenSocket = exports.ScreenSocket = class ScreenSocket extends GenericSock
   constructor(...args) {
     var _temp;
 
-    (_temp = super(...args), this.addClient = socket => {
-      let client = new SocketClient(this.io, socket);
+    (_temp = super(...args), this.addNotification = action => {
+      return this.store.addActionListener(action.type, action => {
+        this.io.to('notification').emit(action.type, action.payload);
+      });
+    }, this.addClient = socket => {
+      let client = new SocketClient(this.io, socket, this.store);
       return client;
     }, _temp)[(this.server, this.store, this.namespace)] = args;
+
     this.io.on('connection', this.addClient);
+
+    this.removeActionListeners = ['MESSAGE'].map(action => this.store.addActionListener(action, action => {}));
   }
+
 };
 let RemoteSocket = exports.RemoteSocket = class RemoteSocket extends GenericSocket {
   constructor(...args) {

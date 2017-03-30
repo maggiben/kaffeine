@@ -26,7 +26,7 @@ const allowCrossDomain = function (request, response, next) {
 }
 
 // Store
-const store = configureStore()
+export const store = configureStore()
 const reduxMiddleware = function (request, response, next) {
   response.store = store
   return next()
@@ -60,6 +60,73 @@ const socket = new ScreenSocket(server, store, '/screen')
 //const kafkaConsumer = new KafkaConsumer(store)
 const kafkaConsumerGroup = new KafkaConsumerGroup(store)
 const redisPubSub = new RedisPubSub(store)
+
+
+// Test all services
+Promise.all([function () {
+  return new Promise((resolve, reject) => {
+    kafkaConsumerGroup.events.once('connect', function () {
+      return resolve()
+    })
+  })
+}, function () {
+  return new Promise((resolve, reject) => {
+    redisPubSub.events.once('connect', function () {
+      return resolve()
+    })
+  })
+}]).then(function () {
+  setupListeners()
+  debug('Services online')
+})
+
+
+const getMessages = async function () {
+  console.log('connected')
+  let offset = await kafkaConsumerGroup.getLatestOffsets();
+  let data = await kafkaConsumerGroup.getOffset()
+
+  let index = offset[config.kafka.topic.topicName][config.kafka.topic.partition];
+
+  /*
+  try {
+    let value = JSON.parse(message.value)
+    debug('index: ', index)
+    debug('queryId: ', value.queryId)
+    redisPubSub.client.hmset(value.queryId, 'data', value.data)
+    redisPubSub.client.hgetall(value.queryId, function (error, data) {
+      if (error) {
+        debug(error)
+      }
+      debug('data: ', data.data)
+    })
+  } catch (error) {
+    debug(message)
+    debug(error)
+  }
+
+  */
+
+  /*kafkaConsumerGroup.consumerGroup.commit(function (error, data) {
+    console.log('commit: ', data, error)
+  })*/
+
+
+  /*
+  redisPubSub.client.hmset(value.queryId, 'data', value.data);
+
+  redisPubSub.client.hgetall(value.queryId, function (error, data) {
+    console.dir('fields: ', error, data);
+  })
+  */
+}
+
+
+const setupListeners = function() {
+  kafkaConsumerGroup.events.once('connect', getMessages)
+}
+
+
 
 // Gracefully Shuts down
 /*

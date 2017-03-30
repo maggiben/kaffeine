@@ -2,7 +2,22 @@ import {List, Record, Map} from 'immutable';
 
 const Screen = Record({
   id: null,
-  title: null
+  token: null,
+  title: null,
+  options: null,
+  filters: null,
+  data: null,
+  createdAt: new Date(),
+  poster: {
+    title : null,
+    thumbnail: null,
+    owner: {
+      enterpriseGuid: null,
+      organizationName: null
+    }
+  },
+  filters: [],
+  channels: []
 })
 
 const initialState = List([]);
@@ -35,6 +50,15 @@ export default function Screens(state = initialState, action) {
       } else {
         return state;
       }
+    }
+
+    case 'MESSAGE': {
+      //console.log('MESSAGE:', action)
+      return state
+    }
+
+    case 'RELOAD': {
+      return state
     }
 
     default:

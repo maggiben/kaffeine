@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.server = undefined;
+exports.server = exports.store = undefined;
 
 var _express = require('express');
 
@@ -43,6 +43,8 @@ var _configureStore2 = _interopRequireDefault(_configureStore);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
+
 const debug = require('debug')('kaffeine:main');
 
 const allowCrossDomain = function (request, response, next) {
@@ -57,7 +59,7 @@ const allowCrossDomain = function (request, response, next) {
   }
 };
 
-const store = (0, _configureStore2.default)();
+const store = exports.store = (0, _configureStore2.default)();
 const reduxMiddleware = function (request, response, next) {
   response.store = store;
   return next();
@@ -85,5 +87,40 @@ const socket = new _socket.ScreenSocket(server, store, '/screen');
 
 const kafkaConsumerGroup = new _ConsumerGroup2.default(store);
 const redisPubSub = new _pubsub2.default(store);
+
+Promise.all([function () {
+  return new Promise((resolve, reject) => {
+    kafkaConsumerGroup.events.once('connect', function () {
+      return resolve();
+    });
+  });
+}, function () {
+  return new Promise((resolve, reject) => {
+    redisPubSub.events.once('connect', function () {
+      return resolve();
+    });
+  });
+}]).then(function () {
+  setupListeners();
+  debug('Services online');
+});
+
+const getMessages = (() => {
+  var _ref = _asyncToGenerator(function* () {
+    console.log('connected');
+    let offset = yield kafkaConsumerGroup.getLatestOffsets();
+    let data = yield kafkaConsumerGroup.getOffset();
+
+    let index = offset[_config2.default.kafka.topic.topicName][_config2.default.kafka.topic.partition];
+  });
+
+  return function getMessages() {
+    return _ref.apply(this, arguments);
+  };
+})();
+
+const setupListeners = function () {
+  kafkaConsumerGroup.events.once('connect', getMessages);
+};
 
 exports.default = app;

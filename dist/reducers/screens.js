@@ -9,7 +9,22 @@ var _immutable = require('immutable');
 
 const Screen = (0, _immutable.Record)({
   id: null,
-  title: null
+  token: null,
+  title: null,
+  options: null,
+  filters: null,
+  data: null,
+  createdAt: new Date(),
+  poster: {
+    title: null,
+    thumbnail: null,
+    owner: {
+      enterpriseGuid: null,
+      organizationName: null
+    }
+  },
+  filters: [],
+  channels: []
 });
 
 const initialState = (0, _immutable.List)([]);
@@ -44,6 +59,16 @@ function Screens(state = initialState, action) {
         } else {
           return state;
         }
+      }
+
+    case 'MESSAGE':
+      {
+        return state;
+      }
+
+    case 'RELOAD':
+      {
+        return state;
       }
 
     default:

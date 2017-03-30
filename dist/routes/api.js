@@ -30,10 +30,7 @@ router.get('/', function (request, response) {
       title: 'hello'
     }
   });
-  response.json({
-    date: new Date(),
-    state: store.getState()
-  });
+  response.json(store.getState());
 });
 
 router.post('/', function (request, response) {
@@ -51,4 +48,5 @@ router.post('/', function (request, response) {
     id: id
   });
 });
+
 exports.default = router;

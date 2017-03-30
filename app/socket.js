@@ -1,11 +1,9 @@
 import socketio from 'socket.io'
-//import redis from 'redis'
-//const redis = require('redis')
+import { version } from '../package.json'
 import { createClient } from 'redis'
 import adapter from 'socket.io-redis'
-import config from 'config'
 import { EventEmitter } from 'events'
-import uuid from 'uuid/v4'
+import config from 'config'
 const debug = require('debug')('kaffeine:socketio')
 
 // Default rooms
@@ -33,156 +31,203 @@ class SocketEvents extends EventEmitter {
   }
 }
 
+
+// export class Socket {
+
+//   constructor (server, store, namespace = '/') {
+//     // Setup Adapter
+//     const io = socketio.listen(server)
+//     io.adapter(adapter({
+//       pubClient: pub,
+//       subClient: sub
+//     }))
+
+//     this.store = store
+//     this.io = io.of(namespace)
+//     this.events = new SocketEvents()
+
+//     /*io.on('connection', function (socket) {
+//       io.of('/').adapter.clients(function (error, clients) {
+//         console.log('clientsx:', clients) // an array containing all connected socket ids
+//       })
+//       let client = new SocketClient(io, socket)
+//     })
+//     */
+
+//     this.io.on('connection', this.addClient)
+//     this.io.on('disconnecting', reason => {
+//       debug('disconnecting: ', reason)
+//     })
+//     this.io.use(this.handshake)
+//     this.io.use(this.redux)
+//   }
+
+//   addClient = socket => {
+//     let client = new SocketClient(this.io, socket)
+//     return client
+//   }
+
+//   getClients () {
+//     this.adapter.clients(function (error, clients) {
+//       console.log('clientsx:', clients) // an array containing all connected socket ids
+//     })
+//   }
+
+//   handshake = (socket, next) => {
+//     const token = socket.handshake.query.token
+//     if(token) {
+//       socket.user = {
+//         token: token
+//       }
+//       this.store.dispatch(this.add(token))
+//       return next()
+//     } else {
+//       debug('unauthorized')
+//       socket.disconnect('unauthorized')
+//       return next(new Error('not authorized'))
+//     }
+//   }
+
+//   add = (token) => {
+//     return function (dispatch, getState) {
+//       return dispatch(function () {
+//         return new Promise((resolve, reject) => {
+//           setTimeout(() => {
+//             return resolve()
+//           }, 50)
+//         })
+//       })
+//       .then(() => {
+//         dispatch({
+//           type: 'ADD_SCREEN',
+//           payload: {
+//             id: token,
+//             title: 'nppx'
+//           }
+//         })
+//       })
+//     }
+//   }
+
+//   provision = async provider => {
+//     try {
+//       var payload = await provider()
+//     } catch (error) {
+//       return error
+//     }
+//   }
+
+//   /*
+//     A generic dispatcher takes an action and a query provider then
+//     asynchronously produces the query parameters and dispatches an action
+//     A query provider migth perform the following actions
+//       * Persist the query id and query params on to db
+//       * produce a kafka message
+//       * emit a socket event
+//   */
+
+//   /*
+//   genericDispatcher = async (action, queryProvider) => {
+//     return function (dispatch, getState) {
+//       let state = getState()
+//       try {
+//         var query = await queryProvider()
+//         return dispatch({
+//           type: action,
+//           payload: query
+//         })
+//       } catch (error) {
+//         // ...
+//       }
+//     }
+//   }
+//   */
+
+//   redux = (socket, next) => {
+//     if(this.store) {
+//       socket.store = this.store
+//       return next()
+//     } else {
+//       debug('no store associated with socket')
+//       return next(new Error('no store associated with socket'))
+//     }
+//   }
+// }
+
+
 class SocketClient {
-  constructor (io, socket) {
+  constructor (io, socket, store) {
+    this.actions = ['MESSAGE', 'DISPLAY', 'SEND', 'REFRESH', 'RELOAD']
+    this.events = ['disconnect', 'echo', 'ping', 'join', 'leave']
     this.io = io
     this.socket = socket
-    this.db = pub
+    this.store = store
 
+    // Socket listeners
+    this.events.map(event => {
+      return this.socket.on(event, this[event])
+    })
 
-    this.socket.on('disconnect', this.disconnect)
-    this.socket.on('echo', this.echo)
-    this.socket.on('join', this.join)
-    this.socket.on('banner', this.banner)
-    this.db.set('chatio:connections:' + socket.user.token, socket.id)
+    // Store listeners
+    this.removeActionListeners = this.actions.map(action => this.store.addActionListener(action, action => {
+      let { query } = action.payload
+      if(query && query.id === this.socket.user.id) {
+        debug('store action', action.type)
+        this.socket.emit(action.type, action.payload)
+      }
+    }))
   }
 
-  disconnect = () => {
+  disconnect = reason => {
     debug('disconnect:', this.socket.id)
+    this.socket.removeAllListeners()
+    this.removeActionListeners.map(removeActionListener => {
+      removeActionListener()
+    })
   }
 
   echo = message => {
-    debug('echo: ', message)
+    debug('echo:', message)
     this.socket.emit('echo', message)
-    /*this.db.get('chatio:connections:' + this.socket.user.token, function (error, reply) {
-      console.log("REDIS: ", reply)
-    })*/
+  }
+
+  ping = () => {
+    debug('ping')
+    this.socket.emit('pong', version)
   }
 
   join = options => {
-    // Create if non existant
+    debug('ping')
     let exists = rooms.some(room => (room.name === options.name))
-    // create room
     if(!exists) {
       this.socket.emit('fail', 'not found')
     }
-    this.io.adapter.remoteJoin(this.socket.id, 'notification', function (error) {
+
+    this.io.adapter.remoteJoin(this.socket.id, options.name, error => {
       if (error) {
         debug('unknown id')
-        /* unknown id */
+        return
       }
-    });
-    this.io.to('notification').emit('echo', { message: 'welcome' })
+      this.socket.emit('joined', options.name)
+    })
   }
 
-  banner = message => {
-    let room = rooms[0];
-    /*
-    this.io.of('/').adapter.clients(['notification'], (error, clients) => {
-      clients.forEach(client => {
-        console.log('client: ', client)
-        this.io.to(client).emit('banner', { room: room, message: 'sdafasdfadsf' })
-      })
-    })
-    */
-    //console.log(this.socket.store.getState())
-    this.io.to('notification').emit('banner', { room, message })
-  }
-  getId = token => {
-    return this.socket.emit('screen', {
-      id: uuid()
+  leave = options => {
+    debug('leave')
+    let exists = rooms.some(room => (room.name === options.name))
+    if(!exists) {
+      this.socket.emit('fail', 'not found')
+    }
+
+    this.io.adapter.remoteLeave(this.socket.id, options.name, error => {
+      if (error) {
+        debug('unknown id')
+        return
+      }
+      this.socket.emit('leaved', options.name)
     })
   }
 }
-
-export class Socket {
-
-  constructor (server, store, namespace = '/') {
-    // Setup Adapter
-    const io = socketio.listen(server)
-    io.adapter(adapter({
-      pubClient: pub,
-      subClient: sub
-    }))
-
-    this.store = store
-    this.io = io.of(namespace)
-    this.events = new SocketEvents()
-
-    /*io.on('connection', function (socket) {
-      io.of('/').adapter.clients(function (error, clients) {
-        console.log('clientsx:', clients) // an array containing all connected socket ids
-      })
-      let client = new SocketClient(io, socket)
-    })
-    */
-
-    this.io.on('connection', this.addClient)
-    this.io.on('disconnecting', reason => {
-      debug('disconnecting: ', reason)
-    })
-    this.io.use(this.handshake)
-    this.io.use(this.redux)
-  }
-
-  addClient = socket => {
-    let client = new SocketClient(this.io, socket)
-    return client
-  }
-
-  getClients () {
-    this.adapter.clients(function (error, clients) {
-      console.log('clientsx:', clients) // an array containing all connected socket ids
-    })
-  }
-
-  handshake = (socket, next) => {
-    const token = socket.handshake.query.token
-    if(token) {
-      socket.user = {
-        token: token
-      }
-      this.store.dispatch(this.add(token))
-      return next()
-    } else {
-      debug('unauthorized')
-      socket.disconnect('unauthorized')
-      return next(new Error('not authorized'))
-    }
-  }
-
-  add = (token) => {
-    return function (dispatch, getState) {
-      return dispatch(function () {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            return resolve()
-          }, 50)
-        })
-      })
-      .then(() => {
-        dispatch({
-          type: 'ADD_SCREEN',
-          payload: {
-            id: token,
-            title: 'nppx'
-          }
-        })
-      })
-    }
-  }
-
-  redux = (socket, next) => {
-    if(this.store) {
-      socket.store = this.store
-      return next()
-    } else {
-      debug('no store associated with socket')
-      return next(new Error('no store associated with socket'))
-    }
-  }
-}
-
 
 class GenericSocket {
 
@@ -196,26 +241,32 @@ class GenericSocket {
 
     debug('socket namespace: ', namespace)
     this.io = io.of(namespace)
+    // Redux store
     this.store = store
     // middlewares
     this.io.use(this.handshake)
     this.io.use(this.redux)
-    // listeners
-    this.io.on('disconnecting', this.disconnecting)
   }
 
   getClients () {
-    this.adapter.clients(function (error, clients) {
-      // an array containing all connected socket ids
-      return clients;
+    return new Promise((resolve, reject) => {
+      this.adapter.clients(function (error, clients) {
+        if(error) {
+          return reject(error)
+        }
+        // an array containing all connected socket ids
+        return resolve(clients)
+      })
     })
   }
 
   handshake = (socket, next) => {
     const token = socket.handshake.query.token
+    const id = socket.handshake.query.id
     if(token) {
       socket.user = {
-        token: token
+        token: token,
+        id: id
       }
       return next()
     } else {
@@ -232,25 +283,35 @@ class GenericSocket {
       return next(new Error('no store associated with socket'))
     }
   }
-
-  disconnecting = reason => {
-    debug('disconnecting: ', reason)
-  }
 }
 
 export class ScreenSocket extends GenericSocket {
   constructor(...args) {
     super(...args)
     [this.server, this.store, this.namespace] = args;
+
     this.io.on('connection', this.addClient)
+
+
+    this.removeActionListeners = ['MESSAGE'].map(action => this.store.addActionListener(action, action => {
+      //this.io.to('notification').emit(action.type, action.payload)
+    }))
+
     /*
-    const removeActionListener = store.addActionListener('ADD_SCREEN', () => {
-      console.log('track', 'ADD_SCREEN');
+    const removeActionListener = this.store.addActionListener('MESSAGE', action => {
+      this.io.to('notification').emit('banner', action)
     })
     */
   }
+
+  addNotification = action => {
+    return this.store.addActionListener(action.type, action => {
+      this.io.to('notification').emit(action.type, action.payload)
+    })
+  }
+
   addClient = socket => {
-    let client = new SocketClient(this.io, socket)
+    let client = new SocketClient(this.io, socket, this.store)
     return client
   }
 }

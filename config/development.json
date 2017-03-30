@@ -12,7 +12,8 @@
 
     },
     "topic": {
-      "topicName": "screen-broadcast"
+      "topicName": "screen-broadcast",
+      "partition": 0
     }
   },
   "redis": {
