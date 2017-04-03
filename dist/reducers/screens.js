@@ -7,6 +7,8 @@ exports.default = Screens;
 
 var _immutable = require('immutable');
 
+var _ActionTypes = require('../constants/ActionTypes');
+
 const Screen = (0, _immutable.Record)({
   id: null,
   token: null,
@@ -68,6 +70,12 @@ function Screens(state = initialState, action) {
 
     case 'RELOAD':
       {
+        return state;
+      }
+
+    case _ActionTypes.PROVISION_SCREEN_REQUEST:
+      {
+        console.log('PROVISION_SCREEN_REQUEST');
         return state;
       }
 

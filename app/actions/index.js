@@ -1,2 +1,2 @@
-export screen from './screen'
-export wall from './wall'
+export ScreenActions from './ScreenActions'
+export WallActions from './WallActions'

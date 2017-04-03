@@ -1,4 +1,22 @@
-import {List, Record, Map} from 'immutable';
+/*
+ * Wall Action Creators
+ * @desc:
+ * Author: Benjamin at bmaggi@elementum.com
+ * Version: 0.1.0
+ */
+
+import {
+  List,
+  Record,
+  Map
+} from 'immutable'
+
+import {
+  PROVISION_SCREEN,
+  PROVISION_SCREEN_REQUEST,
+  EDIT_SCREEN,
+  REMOVE_SCREEN
+} from '../constants/ActionTypes'
 
 const Screen = Record({
   id: null,
@@ -58,6 +76,11 @@ export default function Screens(state = initialState, action) {
     }
 
     case 'RELOAD': {
+      return state
+    }
+
+    case PROVISION_SCREEN_REQUEST: {
+      console.log('PROVISION_SCREEN_REQUEST')
       return state
     }
 
