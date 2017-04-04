@@ -5,17 +5,12 @@
  * Version: 0.1.0
  */
 
-import {
-  PROVISION_SCREEN,
-  PROVISION_SCREEN_REQUEST,
-  EDIT_SCREEN,
-  REMOVE_SCREEN
-} from '../constants/ActionTypes'
+import * as types from '../constants/ActionTypes'
 
 /* Screens */
-export const editScreen = payload => ({ type: EDIT_SCREEN, payload })
-export const removeScreen = payload => ({ type: REMOVE_SCREEN, payload })
-export const provisionRequest = payload => ({ type: PROVISION_SCREEN_REQUEST, payload })
+export const editScreen = payload => ({ type: types.EDIT_SCREEN, payload })
+export const removeScreen = payload => ({ type: types.REMOVE_SCREEN, payload })
+export const provisionRequest = payload => ({ type: types.PROVISION_SCREEN_REQUEST, payload })
 
 export function provisionScreen (id, options) {
   return async function (dispatch, getState) {

@@ -29,6 +29,40 @@ let RedisPubSub = class RedisPubSub {
       debug(message);
     };
 
+    this.get = key => {
+      return Promise((reject, resolve) => {
+        this.client.get(ley, (error, data) => {
+          if (error) return reject(error);
+          if (!data) return reject();
+          try {
+            return resolve(JSON.parse(data.toString()));
+          } catch (error) {
+            return reject(error);
+          }
+        });
+      });
+    };
+
+    this.set = (key, value, ttl) => {
+      return Promise((resolve, reject) => {
+        try {
+          value = JSON.stringify(value);
+        } catch (error) {
+          return reject(error);
+        }
+        const callback = error => {
+          if (error) return reject(error);
+          resolve(null, value);
+        };
+
+        if (-1 === ttl) {
+          this.client.set(key, value, callback);
+        } else {
+          this.client.setex(key, ttl || 60, value, callback);
+        }
+      });
+    };
+
     this.onConnect = () => {
       this.events.emit('connect');
       debug('redis client connected');

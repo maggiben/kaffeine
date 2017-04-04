@@ -1,7 +1,11 @@
 import { ConsumerGroup, Offset, Client } from 'kafka-node'
 import config from 'config'
 import { EventEmitter } from 'events'
+import * as actions from './actions/ScreenActions'
+import * as types from './constants/ActionTypes'
+
 const debug = require('debug')('kaffeine:ConsumerGroup')
+
 const groupOptions = {
   host: 'localhost:2181',
   groupId: 'ExampleTestGroup',
@@ -20,7 +24,7 @@ const groupOptions = {
 // create single EventEmitter instance
 class KafkaEvents extends EventEmitter {
   constructor(...args) {
-    super(...args);
+    super(...args)
   }
 }
 
@@ -37,7 +41,7 @@ export default class KafkaConsumerGroup {
     // Consumer events
     this.consumerGroup.once('connect', this.onConnect)
     // Class eventEmitter instance
-    this.events = new KafkaEvents();
+    this.events = new KafkaEvents()
   }
 
   startListeners = () => {
@@ -82,7 +86,7 @@ export default class KafkaConsumerGroup {
   // Kafka consumer is connected
   onConnect = () => {
     this.events.emit('connect', this.consumerGroup)
-    this.consumerGroup.setOffset(this.topic, this.partition, 23)
+    //this.consumerGroup.setOffset(this.topic, this.partition, 23)
     this.startListeners()
     debug('Consuming Kafka')
   }

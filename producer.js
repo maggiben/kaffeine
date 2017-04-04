@@ -13,9 +13,12 @@ const chance = new Chance()
 
 producer.on('ready', function () {
   var message = {
-    queryId: chance.hash(),
-    date: new Date().toString(),
-    data: chance.sentence()
+    type: 'PROVISION_SCREEN_REQUEST',
+    payload: {
+      queryId: chance.hash(),
+      date: new Date().toString(),
+      data: chance.sentence()
+    }
   };
 
   var keyedMessage = new KeyedMessage('keyed', JSON.stringify(message));

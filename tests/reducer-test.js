@@ -113,7 +113,6 @@ it('stores a key in redis', () => {
 it('reads a key in redis', done => {
   const client = redis.createClient()
   client.get('benja', function(error, result) {
-    console.log(result)
     return done()
   })
 })

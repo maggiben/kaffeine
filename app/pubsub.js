@@ -78,10 +78,15 @@ export default class RedisPubSub {
       } catch (error) {
         return reject(error);
       }
+      const callback = error => {
+        if (error) return reject(error);
+        resolve(null, value);
+      }
+
       if (-1 === ttl) {
-        this.client.set(k, val, cb);
+        this.client.set(key, value, callback);
       } else {
-        this.client.setex(k, (ttl || 60), val, cb);
+        this.client.setex(key, (ttl || 60), value, callback);
       }
     })
   }
