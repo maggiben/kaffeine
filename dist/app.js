@@ -25,6 +25,8 @@ var _socket = require('./socket');
 
 var _routes = require('./routes');
 
+var _middleware = require('./middleware');
+
 var _consumer = require('./consumer');
 
 var _consumer2 = _interopRequireDefault(_consumer);
@@ -47,35 +49,23 @@ function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, a
 
 const debug = require('debug')('kaffeine:main');
 
-const allowCrossDomain = function (request, response, next) {
-  response.header('Access-Control-Allow-Origin', '*');
-  response.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Authorization, Accept, token');
-  response.header('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT');
-
-  if ('OPTIONS' === request.method) {
-    response.status(200).end();
-  } else {
-    return next();
-  }
-};
-
 const store = exports.store = (0, _configureStore2.default)();
+
 const reduxMiddleware = function (request, response, next) {
   response.store = store;
   return next();
 };
-
-const removeActionListener = store.addActionListener('ADD_SCREEN', () => {});
 
 const app = (0, _express2.default)();
 
 app.use(_bodyParser2.default.json());
 app.use(_bodyParser2.default.urlencoded({ extended: true }));
 app.use((0, _cookieParser2.default)());
-app.use(allowCrossDomain);
+app.use(_middleware.cors);
 app.use(reduxMiddleware);
 
 app.use('/api', _routes.api);
+app.use('/screen', _routes.screen);
 
 const server = exports.server = app.listen(_config2.default.service.port, function () {
   const host = server.address().address;
@@ -110,7 +100,6 @@ const getMessages = (() => {
     console.log('connected');
     let offset = yield kafkaConsumerGroup.getLatestOffsets();
     let data = yield kafkaConsumerGroup.getOffset();
-
     let index = offset[_config2.default.kafka.topic.topicName][_config2.default.kafka.topic.partition];
   });
 

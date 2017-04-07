@@ -68,17 +68,18 @@ let SocketClient = class SocketClient {
     };
 
     this.join = options => {
-      debug('ping');
       let exists = rooms.some(room => room.name === options.name);
       if (!exists) {
+        debug('room', options.name, 'not found');
         this.socket.emit('fail', 'not found');
       }
-
+      debug('joining room:', options.name);
       this.io.adapter.remoteJoin(this.socket.id, options.name, error => {
         if (error) {
           debug('unknown id');
           return;
         }
+        debug('joined room:', options.name);
         this.socket.emit('joined', options.name);
       });
     };
@@ -112,7 +113,7 @@ let SocketClient = class SocketClient {
     this.removeActionListeners = this.actions.map(action => this.store.addActionListener(action, action => {
       let { query } = action.payload;
       if (query && query.id === this.socket.user.id) {
-        debug('store action', action.type);
+        debug('store action', action.type, query.id);
         this.socket.emit(action.type, action.payload);
       }
     }));

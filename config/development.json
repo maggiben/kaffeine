@@ -17,7 +17,7 @@
     }
   },
   "redis": {
-      "hostname": "localhost",
+      "hostname": "r9-redis-dev01-001.yxzgxx.0001.use1.cache.amazonaws.com",
       "port": 6379,
       "credentials": {
         "usermane": "",
@@ -26,7 +26,7 @@
       "subscriberName": "screen-broadcast"
   },
   "service": {
-    "port": 8282,
+    "port": 8080,
     "host": "localhost"
   }
 }

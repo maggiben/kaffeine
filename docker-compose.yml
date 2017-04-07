@@ -1,0 +1,35 @@
+redis:
+    image: redis:3
+    restart: always
+    log_opt:
+        max-size: 100k
+    ports:
+        - "6379:6379"
+mongo:
+    image: mongo:3
+    restart: always
+    log_opt:
+        max-size: 100k
+    ports:
+        - "27017:27017"
+
+kaffeine:
+    build: ./
+    working_dir: /opt/webapi
+    command: npm start
+    expose:
+        - "8080"
+    environment:
+        - PORT=8080
+        - HOSTIP_SINGLE_CONTAINER=_BLOCKED_
+    log_opt:
+        max-size: 100k
+    volumes:
+        - ./package.json:/usr/src/app/package.json
+    restart: always
+    ports:
+        - "8383:8383"
+        - "8080:8080"
+    links:
+        - mongo:linked-mongo
+        - redis:linked-redis

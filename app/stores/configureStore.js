@@ -51,6 +51,3 @@ const enhancer = compose(
 export default function configureStore(initialState) {
   return createStore(reducer, initialState, enhancer)
 }
-
-/*V1etn4mi
-Pl4s1cos*/

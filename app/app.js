@@ -3,38 +3,21 @@ import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import config from 'config'
 import { Socket, ScreenSocket } from './socket'
-import { api } from './routes'
+import { api, screen } from './routes'
+import { cors } from './middleware'
 import KafkaConsumer from './consumer'
 import KafkaConsumerGroup from './ConsumerGroup'
 import RedisPubSub from './pubsub'
 import configureStore from './stores/configureStore'
 const debug = require('debug')('kaffeine:main')
 
-// CORS middleware
-const allowCrossDomain = function (request, response, next) {
-  response.header('Access-Control-Allow-Origin', '*')
-  response.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Authorization, Accept, token')
-  response.header('Access-Control-Allow-Methods', 'OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT')
-
-  // intercept OPTIONS method
-  if ('OPTIONS' === request.method) {
-    response.status(200).end()
-  }
-  else {
-    return next()
-  }
-}
-
 // Store
 export const store = configureStore()
+
 const reduxMiddleware = function (request, response, next) {
   response.store = store
   return next()
 }
-
-const removeActionListener = store.addActionListener('ADD_SCREEN', () => {
-  //console.log('track', 'ADD_SCREEN');
-});
 
 // Globals
 const app = express()
@@ -43,11 +26,12 @@ const app = express()
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(cookieParser())
-app.use(allowCrossDomain)
+app.use(cors)
 app.use(reduxMiddleware)
 
 // App Rutes
-app.use('/api', api);
+app.use('/api', api)
+app.use('/screen', screen)
 
 // App Server
 export const server = app.listen(config.service.port, function () {
@@ -85,40 +69,7 @@ const getMessages = async function () {
   console.log('connected')
   let offset = await kafkaConsumerGroup.getLatestOffsets();
   let data = await kafkaConsumerGroup.getOffset()
-
   let index = offset[config.kafka.topic.topicName][config.kafka.topic.partition];
-
-  /*
-  try {
-    let value = JSON.parse(message.value)
-    debug('index: ', index)
-    debug('queryId: ', value.queryId)
-    redisPubSub.client.hmset(value.queryId, 'data', value.data)
-    redisPubSub.client.hgetall(value.queryId, function (error, data) {
-      if (error) {
-        debug(error)
-      }
-      debug('data: ', data.data)
-    })
-  } catch (error) {
-    debug(message)
-    debug(error)
-  }
-
-  */
-
-  /*kafkaConsumerGroup.consumerGroup.commit(function (error, data) {
-    console.log('commit: ', data, error)
-  })*/
-
-
-  /*
-  redisPubSub.client.hmset(value.queryId, 'data', value.data);
-
-  redisPubSub.client.hgetall(value.queryId, function (error, data) {
-    console.dir('fields: ', error, data);
-  })
-  */
 }
 
 

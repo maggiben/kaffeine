@@ -1,12 +1,24 @@
-//import server from '../app/app'
-import { expect } from 'chai'
 import supertest from 'supertest'
 import io from 'socket.io-client'
 import config from 'config'
 import Chance from 'chance'
 import proxyquire from 'proxyquire'
 import { EventEmitter } from 'events'
+import configureStore from 'redux-mock-store'
+import thunk from 'redux-thunk'
+import chai from 'chai'
+import redis from 'redis-mock'
 
+import * as actions from '../app/actions/ScreenActions'
+import * as types from '../app/constants/ActionTypes'
+
+chai.use(require('chai-as-promised'))
+chai.use(require('chai-json-schema'))
+const should = chai.should();
+const expect = chai.expect
+const assert = chai.assert
+
+// Chance
 const chance = new Chance()
 
 // create single EventEmitter instance
@@ -24,7 +36,7 @@ class MockedConsumerGroup {
     this.events = new KafkaEvents()
     setTimeout(() => {
       this.events.emit('connect', {})
-    }, 500)
+    }, 10)
   }
 
   getLatestOffsets () {
@@ -44,6 +56,8 @@ const app = proxyquire('../app/app', {
 const store = app.store
 const server = app.server
 const request = supertest(server)
+const middlewares = [thunk] // add your middlewares like `redux-thunk`
+const mockStore = configureStore(middlewares)
 
 describe('Test socket connection', function() {
   it('it should GET', (done) => {
@@ -98,7 +112,6 @@ describe('Test socket connection', function() {
     })
   })
 
-
   const join = function (id) {
 
     let queryId = chance.hash({length: 5, casing: 'upper'})
@@ -123,10 +136,6 @@ describe('Test socket connection', function() {
           }
         }
 
-        client.once('echo', message => {
-          console.log('echo', message)
-        })
-
         client.once(action.type, function (payload) {
           expect(payload).to.be.a('object')
           client.disconnect()
@@ -146,21 +155,19 @@ describe('Test socket connection', function() {
       // Handle connection
       client.once('connect', handleConnect)
     })
+
   }
 
   it('Connect 10 clients and receive an action on a room', function (done) {
-    var clients = Array.from({length: 10}, (v, k) => k+1).map(client => {
+    var clients = Array.from({length: 100}, (v, k) => k+1).map(client => {
       return join(client)
     })
+    console.log(clients)
     Promise.all(clients)
-    .then(() => done())
+    .then(result => {
+      return done()
+    })
     .catch(done)
-
-    const action = {
-      type: 'MESSAGE',
-      payload: 'hello all of you'
-    }
-    store.dispatch(action)
   })
 
   it('joins and leaves a room', function (done) {

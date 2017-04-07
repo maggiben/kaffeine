@@ -107,12 +107,17 @@ it('should provision a screen', () => {
 
 it('stores a key in redis', () => {
   const client = redis.createClient()
-  client.setex('benja', 10, 20)
+  client.setex('SHA', 10, JSON.stringify({}))
 })
 
 it('reads a key in redis', done => {
   const client = redis.createClient()
-  client.get('benja', function(error, result) {
+  client.get('SHA', function(error, result) {
+    try {
+      let data = JSON.parse(result)
+    } catch (error) {
+      return done(error)
+    }
     return done()
   })
 })
